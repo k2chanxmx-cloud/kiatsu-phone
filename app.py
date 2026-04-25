@@ -1,9 +1,20 @@
 from flask import Flask, render_template, jsonify
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
+# =========================
+# 時間（日本時間固定）
+# =========================
+JST = timezone(timedelta(hours=9))
+
+def now_jst():
+    return datetime.now(JST)
+
+# =========================
+# 設定
+# =========================
 CITY_CODE = "13108"
 CITY_NAME = "東京・江東区"
 API_URL = f"https://zutool.jp/api/getweatherstatus/{CITY_CODE}"
@@ -32,12 +43,16 @@ WEATHER = {
     "400": "☃️",
 }
 
-
+# =========================
+# 画面
+# =========================
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
+# =========================
+# API
+# =========================
 @app.route("/api/kiatsu")
 def api_kiatsu():
     res = requests.get(API_URL, timeout=10)
@@ -46,7 +61,8 @@ def api_kiatsu():
 
     items = data.get("today", data.get("weather", []))
 
-    now_hour = datetime.now().hour
+    # ⭐ 日本時間で判定
+    now_hour = now_jst().hour
     start_hour = max(0, now_hour - 2)
 
     filtered = []
@@ -67,6 +83,7 @@ def api_kiatsu():
         except:
             pass
 
+    # サマリー判定
     levels = [x["level_code"] for x in filtered]
 
     if "4" in levels:
@@ -84,12 +101,14 @@ def api_kiatsu():
 
     return jsonify({
         "city": CITY_NAME,
-        "updated": datetime.now().strftime("%m/%d %H:%M 更新"),
+        "updated": now_jst().strftime("%m/%d %H:%M 更新"),
         "summary": summary,
         "status": status,
         "items": filtered
     })
 
-
+# =========================
+# 起動
+# =========================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
