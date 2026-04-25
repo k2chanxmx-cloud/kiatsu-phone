@@ -59,45 +59,70 @@ def api_kiatsu():
     res.raise_for_status()
     data = res.json()
 
-    items = data.get("today", data.get("weather", []))
+    today_items = data.get("today", [])
+    tomorrow_items = data.get("tomorrow", [])
 
-    # ⭐ 日本時間で判定
     now_hour = now_jst().hour
     start_hour = max(0, now_hour - 2)
 
-    filtered = []
-    for item in items:
+    combined = []
+
+    # 今日：現在時刻の2時間前〜23時まで
+    for item in today_items:
         try:
             hour = int(item.get("time", 0))
             if hour >= start_hour:
-                level_code = str(item.get("pressure_level", ""))
-                filtered.append({
-                    "hour": hour,
-                    "weather": WEATHER.get(str(item.get("weather")), "？"),
-                    "temp": item.get("temp", "-"),
-                    "pressure": item.get("pressure", "-"),
-                    "level": PRESSURE_LEVEL.get(level_code, "不明"),
-                    "level_code": level_code,
-                    "bad": level_code in ["3", "4"]
+                combined.append({
+                    "day": "today",
+                    "label": f"{hour}時",
+                    "item": item
                 })
         except:
             pass
 
-    # サマリー判定
+    # 明日：0時〜5時までの6時間だけ
+    for item in tomorrow_items:
+        try:
+            hour = int(item.get("time", 0))
+            if 0 <= hour <= 5:
+                combined.append({
+                    "day": "tomorrow",
+                    "label": f"明日 {hour}時",
+                    "item": item
+                })
+        except:
+            pass
+
+    filtered = []
+
+    for row in combined:
+        item = row["item"]
+        level_code = str(item.get("pressure_level", ""))
+
+        filtered.append({
+            "hour": row["label"],
+            "weather": WEATHER.get(str(item.get("weather")), "？"),
+            "temp": item.get("temp", "-"),
+            "pressure": item.get("pressure", "-"),
+            "level": PRESSURE_LEVEL.get(level_code, "不明"),
+            "level_code": level_code,
+            "bad": level_code in ["3", "4"],
+            "day": row["day"]
+        })
+
     levels = [x["level_code"] for x in filtered]
 
     if "4" in levels:
-        summary = "今日は気圧かなり危険。無理しないで"
+        summary = "気圧かなり危険。無理しないで"
         status = "danger"
     elif "3" in levels:
-        summary = "今日は気圧注意。頭痛・だるさに注意"
+        summary = "気圧注意。頭痛・だるさに注意"
         status = "warning"
     elif "2" in levels:
         summary = "少し気圧変化あり。様子見しよう"
         status = "caution"
     else:
-        summary = "今日は比較的安定してそう"
-        status = "normal"
+        summary = "比較的安定してそう"
 
     return jsonify({
         "city": CITY_NAME,
