@@ -72,14 +72,26 @@
       font-size: 17px;
     }
 
-    .normal { background: #95d5b2; }
-    .caution { background: #ffd166; }
-    .warning { background: #ff6b6b; }
-    .danger { background: #ff4d6d; color: white; }
+    .normal {
+      background: #95d5b2;
+    }
+
+    .caution {
+      background: #ffd166;
+    }
+
+    .warning {
+      background: #ff6b6b;
+    }
+
+    .danger {
+      background: #ff4d6d;
+      color: white;
+    }
 
     .row {
       display: grid;
-      grid-template-columns: 68px 42px 64px 88px 1fr;
+      grid-template-columns: 78px 36px 68px 86px minmax(64px, 1fr);
       align-items: center;
       gap: 6px;
       padding: 12px 10px;
@@ -89,6 +101,12 @@
       font-size: 14px;
     }
 
+    .row.caution-row {
+      background: rgba(255, 209, 102, 0.25);
+      color: #ffe08a;
+      font-weight: bold;
+    }
+
     .row.bad {
       background: rgba(255, 77, 109, 0.22);
       color: #ffb3c1;
@@ -96,12 +114,18 @@
     }
 
     .level {
+      white-space: nowrap;
+      min-width: 64px;
       text-align: right;
       color: #bde0fe;
       font-weight: bold;
     }
 
-    .bad .level {
+    .row.caution-row .level {
+      color: #ffd166;
+    }
+
+    .row.bad .level {
       color: #ff4d6d;
     }
 
@@ -173,7 +197,14 @@
 
       data.items.forEach(item => {
         const row = document.createElement("div");
-        row.className = item.bad ? "row bad" : "row";
+
+        if (item.level_code === "3" || item.level_code === "4") {
+          row.className = "row bad";
+        } else if (item.level_code === "2") {
+          row.className = "row caution-row";
+        } else {
+          row.className = "row";
+        }
 
         row.innerHTML = `
           <div>${item.hour}</div>
