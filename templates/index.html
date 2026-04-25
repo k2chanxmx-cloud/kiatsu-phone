@@ -40,6 +40,28 @@
       font-size: 14px;
     }
 
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .tab {
+      border: none;
+      border-radius: 16px;
+      padding: 12px 8px;
+      font-size: 15px;
+      font-weight: bold;
+      background: rgba(255,255,255,0.12);
+      color: white;
+    }
+
+    .tab.active {
+      background: #bde0fe;
+      color: #111;
+    }
+
     .summary {
       margin: 20px 0;
       padding: 16px;
@@ -47,6 +69,7 @@
       font-weight: bold;
       color: #111;
       line-height: 1.5;
+      font-size: 17px;
     }
 
     .normal { background: #95d5b2; }
@@ -56,7 +79,7 @@
 
     .row {
       display: grid;
-      grid-template-columns: 48px 42px 64px 88px 1fr;
+      grid-template-columns: 68px 42px 64px 88px 1fr;
       align-items: center;
       gap: 6px;
       padding: 12px 10px;
@@ -82,7 +105,7 @@
       color: #ff4d6d;
     }
 
-    button {
+    button.refresh {
       width: 100%;
       margin-top: 16px;
       border: none;
@@ -101,16 +124,41 @@
     <h1>気圧どうかな？</h1>
     <div class="city" id="city">読み込み中...</div>
 
+    <div class="tabs">
+      <button class="tab active" id="tab-koto" onclick="changeArea('koto')">江東区</button>
+      <button class="tab" id="tab-omotesando" onclick="changeArea('omotesando')">表参道</button>
+    </div>
+
     <div class="summary normal" id="summary">取得中...</div>
 
     <div id="list"></div>
 
-    <button onclick="loadData()">更新</button>
+    <button class="refresh" onclick="loadData()">更新</button>
   </div>
 
   <script>
+    let currentArea = localStorage.getItem("selectedArea") || "koto";
+
+    function setActiveTab() {
+      document.getElementById("tab-koto").classList.remove("active");
+      document.getElementById("tab-omotesando").classList.remove("active");
+
+      if (currentArea === "koto") {
+        document.getElementById("tab-koto").classList.add("active");
+      } else {
+        document.getElementById("tab-omotesando").classList.add("active");
+      }
+    }
+
+    function changeArea(area) {
+      currentArea = area;
+      localStorage.setItem("selectedArea", area);
+      setActiveTab();
+      loadData();
+    }
+
     async function loadData() {
-      const res = await fetch("/api/kiatsu");
+      const res = await fetch(`/api/kiatsu?area=${currentArea}`);
       const data = await res.json();
 
       document.getElementById("city").textContent =
@@ -128,7 +176,7 @@
         row.className = item.bad ? "row bad" : "row";
 
         row.innerHTML = `
-          <div>${item.hour}時</div>
+          <div>${item.hour}</div>
           <div>${item.weather}</div>
           <div>${item.temp}℃</div>
           <div>${item.pressure}hPa</div>
@@ -143,6 +191,7 @@
       navigator.serviceWorker.register("/static/service-worker.js");
     }
 
+    setActiveTab();
     loadData();
   </script>
 </body>
