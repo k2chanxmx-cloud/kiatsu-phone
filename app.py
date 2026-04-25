@@ -4,11 +4,17 @@ from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
+# =========================
+# 日本時間
+# =========================
 JST = timezone(timedelta(hours=9))
 
 def now_jst():
     return datetime.now(JST)
 
+# =========================
+# エリア設定
+# =========================
 AREAS = {
     "koto": {
         "name": "東京・江東区",
@@ -16,10 +22,13 @@ AREAS = {
     },
     "omotesando": {
         "name": "表参道",
-        "code": "13113"  # 渋谷区として取得
+        "code": "13113"  # 渋谷区扱い
     }
 }
 
+# =========================
+# 表示用
+# =========================
 PRESSURE_LEVEL = {
     "0": "通常",
     "1": "通常",
@@ -44,12 +53,16 @@ WEATHER = {
     "400": "☃️",
 }
 
-
+# =========================
+# 画面
+# =========================
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
+# =========================
+# API
+# =========================
 @app.route("/api/kiatsu")
 def api_kiatsu():
     area_key = request.args.get("area", "koto")
@@ -64,38 +77,46 @@ def api_kiatsu():
     res.raise_for_status()
     data = res.json()
 
+    # ⭐ ここ重要（tommorow対応）
     today_items = data.get("today", [])
-    tomorrow_items = data.get("tomorrow", [])
+    tomorrow_items = data.get("tommorow", data.get("tomorrow", []))
 
     now_hour = now_jst().hour
     start_hour = max(0, now_hour - 2)
 
     combined = []
 
+    # =========================
+    # 今日（今-2時間〜）
+    # =========================
     for item in today_items:
         try:
             hour = int(item.get("time", 0))
             if hour >= start_hour:
                 combined.append({
-                    "day": "today",
                     "label": f"{hour}時",
                     "item": item
                 })
         except:
             pass
 
+    # =========================
+    # 明日（0〜5時）
+    # =========================
     for item in tomorrow_items:
         try:
             hour = int(item.get("time", 0))
             if 0 <= hour <= 5:
                 combined.append({
-                    "day": "tomorrow",
                     "label": f"明日 {hour}時",
                     "item": item
                 })
         except:
             pass
 
+    # =========================
+    # 表示整形
+    # =========================
     filtered = []
 
     for row in combined:
@@ -109,10 +130,12 @@ def api_kiatsu():
             "pressure": item.get("pressure", "-"),
             "level": PRESSURE_LEVEL.get(level_code, "不明"),
             "level_code": level_code,
-            "bad": level_code in ["3", "4"],
-            "day": row["day"]
+            "bad": level_code in ["3", "4"]
         })
 
+    # =========================
+    # サマリー
+    # =========================
     levels = [x["level_code"] for x in filtered]
 
     if "4" in levels:
@@ -137,6 +160,8 @@ def api_kiatsu():
         "items": filtered
     })
 
-
+# =========================
+# 起動
+# =========================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
