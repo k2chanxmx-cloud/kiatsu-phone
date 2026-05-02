@@ -88,6 +88,7 @@ def api_kiatsu():
 
     for row in combined:
         item = row["item"]
+        level_code = str(item.get("pressure_level", ""))
 
         filtered.append({
             "hour": row["label"],
