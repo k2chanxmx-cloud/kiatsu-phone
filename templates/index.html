@@ -8,6 +8,8 @@
   <link rel="apple-touch-icon" href="/static/icon.png">
   <title>気圧どうかな？</title>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -72,26 +74,14 @@
       font-size: 17px;
     }
 
-    .normal {
-      background: #95d5b2;
-    }
-
-    .caution {
-      background: #ffd166;
-    }
-
-    .warning {
-      background: #ff6b6b;
-    }
-
-    .danger {
-      background: #ff4d6d;
-      color: white;
-    }
+    .normal { background: #95d5b2; }
+    .caution { background: #ffd166; }
+    .warning { background: #ff6b6b; }
+    .danger { background: #ff4d6d; color: white; }
 
     .row {
       display: grid;
-      grid-template-columns: 78px 36px 68px 86px minmax(64px, 1fr);
+      grid-template-columns: 78px 36px 68px 86px;
       align-items: center;
       gap: 6px;
       padding: 12px 10px;
@@ -113,20 +103,24 @@
       font-weight: bold;
     }
 
-    .level {
-      white-space: nowrap;
-      min-width: 64px;
-      text-align: right;
-      color: #bde0fe;
+    .chart-card {
+      margin-top: 26px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .chart-title {
+      font-size: 16px;
       font-weight: bold;
+      margin-bottom: 12px;
+      color: #ffffff;
     }
 
-    .row.caution-row .level {
-      color: #ffd166;
-    }
-
-    .row.bad .level {
-      color: #ff4d6d;
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 260px;
     }
 
     button.refresh {
@@ -158,10 +152,18 @@
     <div id="list"></div>
 
     <button class="refresh" onclick="loadData()">更新</button>
+
+    <div class="chart-card">
+      <div class="chart-title">気圧の推移</div>
+      <div class="chart-wrap">
+        <canvas id="pressureChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <script>
     let currentArea = localStorage.getItem("selectedArea") || "koto";
+    let pressureChart = null;
 
     function setActiveTab() {
       document.getElementById("tab-koto").classList.remove("active");
@@ -181,6 +183,71 @@
       loadData();
     }
 
+    function drawPressureChart(labels, pressures) {
+      const canvas = document.getElementById("pressureChart");
+
+      if (pressureChart) {
+        pressureChart.destroy();
+      }
+
+      pressureChart = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "気圧 hPa",
+            data: pressures,
+            borderColor: "#bde0fe",
+            backgroundColor: "rgba(189, 224, 254, 0.18)",
+            borderWidth: 3,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0.35,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.parsed.y} hPa`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: "#d7e3ff",
+                maxRotation: 45,
+                minRotation: 0
+              },
+              grid: {
+                color: "rgba(255,255,255,0.08)"
+              }
+            },
+            y: {
+              ticks: {
+                color: "#d7e3ff",
+                callback: function(value) {
+                  return value + "hPa";
+                }
+              },
+              grid: {
+                color: "rgba(255,255,255,0.08)"
+              }
+            }
+          }
+        }
+      });
+    }
+
     async function loadData() {
       const res = await fetch(`/api/kiatsu?area=${currentArea}`);
       const data = await res.json();
@@ -194,6 +261,9 @@
 
       const list = document.getElementById("list");
       list.innerHTML = "";
+
+      const graphLabels = [];
+      const graphPressures = [];
 
       data.items.forEach(item => {
         const row = document.createElement("div");
@@ -211,11 +281,18 @@
           <div>${item.weather}</div>
           <div>${item.temp}℃</div>
           <div>${item.pressure}hPa</div>
-          <div class="level">${item.level}</div>
         `;
 
         list.appendChild(row);
+
+        const pressureValue = Number(item.pressure);
+        if (!Number.isNaN(pressureValue)) {
+          graphLabels.push(item.hour);
+          graphPressures.push(pressureValue);
+        }
       });
+
+      drawPressureChart(graphLabels, graphPressures);
     }
 
     if ("serviceWorker" in navigator) {
