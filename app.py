@@ -20,14 +20,6 @@ AREAS = {
     }
 }
 
-PRESSURE_LEVEL = {
-    "0": "通常",
-    "1": "通常",
-    "2": "やや注意",
-    "3": "注意",
-    "4": "警戒",
-}
-
 WEATHER = {
     "100": "☀️",
     "101": "🌤️",
@@ -96,14 +88,12 @@ def api_kiatsu():
 
     for row in combined:
         item = row["item"]
-        level_code = str(item.get("pressure_level", ""))
 
         filtered.append({
             "hour": row["label"],
             "weather": WEATHER.get(str(item.get("weather")), "？"),
             "temp": item.get("temp", "-"),
             "pressure": item.get("pressure", "-"),
-            "level": PRESSURE_LEVEL.get(level_code, "不明"),
             "level_code": level_code,
         })
 
